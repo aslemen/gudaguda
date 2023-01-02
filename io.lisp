@@ -98,7 +98,9 @@
 
     ;; variable with type annotation
     ;; (x :type ty :level level)
-    ( (cons singleton (plist :type ty :level level))
+    ( (guard (cons singleton (plist :type ty :level level))
+             (not (and (null ty) (null level)))
+      )
       `(make-vari :data (quote ,singleton) 
                   :type (if ,ty (read-term ,ty))
                   :level (or ,level 0)
