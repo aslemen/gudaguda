@@ -204,10 +204,10 @@
       ( (list ty-encoded) 
         (cond 
           ( (= 0 level) 
-            `(,data :type ,(encode-term ty) )
+            `(,data :type ,ty-encoded )
           )
           ( t 
-            `(,data :type ,(encode-term ty) :level ,level)
+            `(,data :type ,ty-encoded :level ,level)
           )
         )
       )
@@ -234,10 +234,10 @@
       ( (list ty-encoded) 
         (cond 
           ( (= 0 level) 
-            `(const ,data :type ,(encode-term ty) )
+            `(const ,data :type ,ty-encoded )
           )
           ( t 
-            `(const ,data :type ,(encode-term ty) :level ,level)
+            `(const ,data :type ,ty-encoded :level ,level)
           )
         )
       )
