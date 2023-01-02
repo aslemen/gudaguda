@@ -41,7 +41,15 @@
 
 (declaim (ftype (function * list) mapappend-term))
 (defgeneric mapappend-term (f obj succ-list &rest kvargs)
-  (:documentation "TBW")
+  (:documentation "Apply function F to each component of term OBJ and merge the returned values as a single flat list.
+
+F is a function mapping from a single term M, a successive SUCC-LIST, and remainder arguments KVARGS to a list.
+F generates values according to M and returns a list in which the values are appended to SUCC-LIST.
+
+The mapping function applies F to the components of OBJ in a successive way. 
+This mapping fucntion is compared to 'join . fmap' in Haskell.
+
+Call this mapping function inside F for depth-first recursive application of F.")
 )
 (defmethod mapappend-term (f (obj atomic) succ-list &rest kvargs)
   (declare 
@@ -111,7 +119,15 @@
 
 (declaim (ftype (function * list) maplist-term))
 (defgeneric maplist-term (f obj &rest kvargs)
-  (:documentation "TBW")
+  (:documentation "Apply function F to each component of term OBJ and collect returned values in a list.
+
+F is a function from a single term M and remainder arguments KVARGS to any type of value.
+
+The mapping function applies F to the components of OBJ and collects the returned values in a list.
+If (type-term OBJ) is NIL, then the NIL appears in (the type posiiton of) the list.
+This mapping fucntion is compared to 'fmap' in Haskell where OBJ is seen as a list.
+
+Call this mapping function inside F for depth-first recursive application of F.")
 )
 (defmethod maplist-term (f (obj atomic) &rest kvargs)
   (declare 
@@ -176,14 +192,14 @@
 
 (declaim (ftype (function * term) map-term))
 (defgeneric map-term (f obj &rest kvargs)
-  (:documentation 
-"A recursion helper to apply a function to a term recursively.
-Structures will kept untouched and be copied.
+  (:documentation
+"Apply function F to each component of term OBJ and generate an updated term.
 
-F is a function from TERM (and keyword arguments) to TERM.
-OBJ specifies a TERM.
-KVARGS specifices keyword arguments of F.
-")
+F is a function from a single term M and remainder arguments KVARGS to a new term of the same type.
+
+The mapping function applies F to each of the components of OBJ and creates a new instance of OBJ with the components updated.
+
+Call this mapping function inside F for depth-first recursive application of F.")
 )
 (defmethod map-term (f (obj atomic) &rest kvargs)
   (declare
@@ -260,7 +276,7 @@ KVARGS specifices keyword arguments of F.
 
   (match obj
     ( (structure type-annotation :annotated an :level level :type ty
-      :constrs        constrs
+        :constrs      constrs
         :assignments  assignments
         :free-vars    free-vars
       )
@@ -281,6 +297,7 @@ KVARGS specifices keyword arguments of F.
 
 (declaim (ftype (function (term) term) copyterm))
 (defun copyterm (obj)
+  "Create a copy of term OBJ."
   (declare  (type term obj))
 
   ;; map-term always make a copy of TERM.

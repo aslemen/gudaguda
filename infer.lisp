@@ -2,6 +2,7 @@
 
 (declaim (ftype (function (term) term) erase-types) )
 (defun erase-types (obj)
+  "Erase all type annotations of OBJ. Returns a copy."
   (match obj 
     ( (structure type-annotation :annotated an)
       (erase-types an)
@@ -20,6 +21,7 @@
 
 (declaim (ftype (function (term) term) fill-unspecified-types))
 (defun fill-unspecified-types (obj)
+  "Put one type variable on every null type slot in OBJ. Returns a copy."
   (let  ( (obj-copied (map-term #'fill-unspecified-types obj))
         )
     (match obj-copied
@@ -308,12 +310,15 @@
 
 (declaim (ftype (function * null) unify-constrs))
 (defun unify-constrs (obj &key (test #'eq) (temp-constrs nil))
+"Unify constraints in OBJ from bottom up.
+Constraint slots are destructively modified.
+
+Errors are sent if the unification fails."
   (declare  (type term obj)
             (type (function (t t) boolean) test)
             (type list temp-constrs)
   )
-  ;; bottom-up unification
-  ;; modified in-situ
+
   (maplist-term #'unify-constrs obj :test test)
 
   (match obj
@@ -528,11 +533,13 @@
 
 (declaim (ftype (function * null) update-assignments))
 (defun update-assignments (obj &key (parent-assignments nil))
+"Destructively update local assignments of OBJ from top down."
   (declare  (type term obj)
             (type list parent-assignments)
   )
 
-  (setf (term-assignments obj) 
+  ;; overwrite parent assignments with local assignments 
+  (setf (term-assignments obj)
         (append (term-assignments obj) parent-assignments)
   )
   (maplist-term #'update-assignments obj 
@@ -542,9 +549,18 @@
 
 (declaim (ftype (function * null) infer-types))
 (defun infer-types (obj &key (test #'eq))
+"Infer types in OBJ.
+Constraints and local assignments are destructively modified.
+
+Steps:
+* ELAB-TERM-INFO
+* UNIFY-CONSTRS
+* UPDATE-ASSIGNMENTS
+"
   (declare  (type term obj)
             (type (function (t t) boolean) test)
   )
+
   (elab-term-info  obj :test test)
   (unify-constrs    obj :test test)
   (update-assignments obj)

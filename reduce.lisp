@@ -32,7 +32,7 @@ If DO-BETA, the function will do β-reduction at the same time.
                       (append assignments assignments-inherent)
                       :test test
               )
-        ;; if substitite for vari name AT is not found
+        ;; if substitute for vari name AT is not found
         ( (or (cons _ nil) nil )
 
           ;; just do recursion
@@ -44,7 +44,7 @@ If DO-BETA, the function will do β-reduction at the same time.
 
         )
 
-        ;; if substitite is found
+        ;; if substitute is found
         ( (cons _ found-val)
           ;; return
           (make-type-annotation
