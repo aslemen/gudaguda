@@ -163,8 +163,12 @@
   (match obj
     ( (structure type-annotation :annotated an :type ty)
       (list 
-        (apply #'maplist-term f an kvargs)
-        (if ty (apply #'maplist-term f ty kvargs))
+        (apply f an kvargs)
+        (if ty (apply f ty kvargs))
+      )
+    )
+  )
+)
       )
     )
   )
