@@ -104,12 +104,19 @@
                   :level (or ,level 0)
       )
     )
-
+    ;; Lisp-style function application
     ;; (f x y z ...)
     ( (cons functor (cons _ _) )
       ;; normalize the form
-      ;; direct to (app f x y z ...)
-      `(read-term (app ,functor ,@(cdr s-expr)))
+      ;; direct to ((app (app (app f x) y) z) ...)
+      (iter 
+        (with f = functor)
+        (for arg in (cdr s-expr))
+
+        (setq f `(app ,f ,arg))
+
+        (finally (return `(read-term ,f)) )
+      )
     )
 
     ;; superfluous parentheses
