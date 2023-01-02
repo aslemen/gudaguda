@@ -150,23 +150,19 @@
       )
     )
     ( (list 'infer obj)
-      `(setf  (context-result ,ctx)
-              (qpush  (context-result ,ctx) 
-                      (reduce-term (read-term ,obj)
-                        :assignments (context-assignments ,ctx)
-                        :do-beta nil
-                      )
+      `(qpush (context-result ,ctx) 
+              (reduce-term (read-term ,obj)
+                :assignments (context-assignments ,ctx)
+                :do-beta nil
               )
       )
     )
     ( (list 'reduce obj) 
-      `(setf  (context-result ,ctx)
-              (qpush  (context-result ,ctx)
-                      (reduce-term (read-term ,obj)
-                        :assignments (context-assignments ,ctx)
-                        :do-beta t
-                      )
-            )
+      `(qpush (context-result ,ctx)
+              (reduce-term (read-term ,obj)
+                  :assignments (context-assignments ,ctx)
+                  :do-beta t
+              )
       )
     )
     ( otherwise
