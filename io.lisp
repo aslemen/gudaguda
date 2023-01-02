@@ -107,16 +107,14 @@
 
     ;; (f x y z ...)
     ( (cons functor (cons _ _) )
-      (format t "app ~A ~%" s-expr)
       ;; normalize the form
       ;; direct to (app f x y z ...)
       `(read-term (app ,functor ,@(cdr s-expr)))
     )
 
-    ;; a pair of superfluous parentheses
+    ;; superfluous parentheses
     ;; (x)
     ( (cons singleton nil)
-      (format t "sg ~A ~%" s-expr)
       ;; just unwrap the superfluous parentheses
       ;; direct to x
       `(read-term ,singleton)
