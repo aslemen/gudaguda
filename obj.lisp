@@ -35,6 +35,12 @@
   (annotated nil :type term)
 )
 
+(defstruct (assign (:include term))
+  (openvari nil   :type vari)
+  (val      nil   :type term)
+  (whole    nil   :type term)
+)
+
 ;; ============
 ;; Mapping functions
 ;; ============
@@ -116,6 +122,27 @@ Call this mapping function inside F for depth-first recursive application of F."
     )
   )
 )
+(defmethod mappend-term (f (obj assign) succ-list &rest kvargs)
+  (declare 
+    (type (function (term list &key) term) f)
+    (type list succ-list)
+  )
+
+  (match obj
+    ( (structure assign :openvari openvari :val val :whole whole :type ty)
+      (apply f openvari
+            (apply f val 
+                  (apply f whole
+                      (if ty (apply f ty succ-list kvargs) succ-list)
+                      kvargs
+                  )
+                  kvargs 
+            )
+            kvargs
+      )
+    )
+  )
+)
 
 (declaim (ftype (function * list) maplist-term))
 (defgeneric maplist-term (f obj &rest kvargs)
@@ -185,6 +212,18 @@ Call this mapping function inside F for depth-first recursive application of F."
     )
   )
 )
+(defmethod maplist-term (f (obj assign) &rest kvargs)
+  (declare 
+    (type (function (term list &key) term) f)
+    (type list succ-list)
+  )
+
+  (match obj
+    ( (structure assign :openvari openvari :val val :whole whole :type ty)
+      (list (apply f openvari kvargs)
+            (apply f val kvargs)
+            (apply f whole kvargs)
+            (if ty (apply f ty kvargs))
       )
     )
   )
@@ -288,6 +327,34 @@ Call this mapping function inside F for depth-first recursive application of F."
         :constrs      constrs
         :assignments  assignments
         :free-vars    free-vars
+      )
+    )
+  )
+)
+(defmethod map-term (f (obj assign) &rest kvargs)
+  (declare 
+    (type (function (term list &key) term) f)
+    (type list succ-list)
+  )
+
+  (match obj
+    ( (structure assign
+        :openvari openvari :val val :whole whole 
+        :level level
+        :type ty
+        :constrs      constrs
+        :assignments  assignments
+        :free-vars    free-vars
+      )
+      (make-assign
+        :openvari (apply f openvari kvargs)
+        :val (apply f val kvargs)
+        :whole (apply f whole kvargs)
+        :level level
+        :type (if ty (apply f ty kvargs))
+        :constrs constrs
+        :assignments assignments
+        :free-vars free-vars
       )
     )
   )

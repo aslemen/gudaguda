@@ -7,7 +7,8 @@
     ;; io.lisp
     ;; ------
     ;; lambda expression keywords
-    #:λ #:app #:τ #:lisp #:const
+    #:λ #:app #:τ #:↦
+    #:lisp #:assign #:const
     #:bind #:infer #:reduce
     ;; readers
     #:read-term

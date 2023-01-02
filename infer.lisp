@@ -358,6 +358,88 @@ Destructively update the constraint-related slots of OBJ."
   nil
 )
 
+(defmethod elab-term-info ((obj assign) &key (test #'eq))
+  (declare  (type term obj)
+            (type (function (t t) boolean) test)
+  )
+  (maplist-term #'elab-term-info obj :test test)
+
+  (match obj
+    ( (structure assign
+        :openvari (structure vari :data vari-openvari
+                                  :type type-openvari
+                                  :constrs (place constrs-openvari)
+                                  :assignments assignments-openvari
+                                  :free-vars free-vars-openvari
+                  )
+        :val      (structure term :type type-val
+                                  :constrs (place constrs-val)
+                                  :assignments assignments-val
+                                  :free-vars free-vars-val
+                  )
+        :whole    (structure term :type type-whole
+                                  :constrs (place constrs-whole)
+                                  :assignments (place assignments-whole)
+                                  :free-vars free-vars-whole
+                  )
+        :level    level
+        :type     (structure term :constrs (place constrs-ty)
+                                  :assignments assignments-ty
+                                  :free-vars free-vars-ty
+                  )
+        :constrs      (place constrs)
+        :assignments  (place assignments)
+        :free-vars    (place free-vars)
+      )
+
+      ;; merge freevars and constraints
+      (setf free-vars
+            (append free-vars
+                    free-vars-openvari
+                    free-vars-val
+                    free-vars-whole
+                    free-vars-ty
+            )
+      )
+      ;; erase openvari as free variable
+      (push (cons (vari-data openvari) nil) free-vars)
+
+      (setf constrs
+        (cons 
+          ;; (type of openvari) ≡ type of val
+          (cons type-openvari type-val)
+          (append constrs 
+                  constrs-openvari
+                  constrs-val
+                  constrs-whole
+                  constrs-ty
+          )
+        )
+      )
+
+      (setf assignments 
+            (append assignments
+                    assignments-openvari
+                    assignments-val
+                    assignments-whole
+                    assignments-ty
+            )
+      )
+      ;; add assignments to WHOLE
+      ;; (push (cons vari-openvari (assign-val obj)) assignments-whole)
+
+      ;; delete children's cahces
+      (setf constrs-openvari nil)
+      (setf constrs-val nil)
+      (setf constrs-whole nil)
+      (setf constrs-ty nil)
+    )
+  )
+
+  ;; return
+  nil
+)
+
 (declaim (ftype (function * null) unify-constrs))
 (defun unify-constrs (obj &key (test #'eq) (temp-constrs nil))
 "Unify constraints in OBJ from bottom up.

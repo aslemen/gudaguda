@@ -11,8 +11,9 @@ ASSIGNMENTS is an association list
 whose keys are bare name of variables unwrapped from structure VAR,
 and whose values are an arbitrary data of structure TERM.
 
-If DO-BETA, the function will do β-reduction at the same time.
-")
+If DO-BETA, the function will do β-reduction at the same time.;
+otherwise the function will simply replace variables."
+  )
 )
 (defmethod reduce-term
     ( (obj vari) &key (test #'eq) 
@@ -111,6 +112,8 @@ If DO-BETA, the function will do β-reduction at the same time.
                     :assignments assignments
                     :do-beta do-beta
             )
+      ;; [λ (x), conseq] arg
+      ;; with β-reduction ON
       ( (guard  (structure app 
                   :functor  (structure func
                               :argvari (structure vari :data vari-name)
@@ -120,7 +123,7 @@ If DO-BETA, the function will do β-reduction at the same time.
                   :level level
                   :type ty
                 )
-                do-beta ;; only when β-reduction is ON
+                do-beta
         )
         ;; do β-reduction
         ;; [λ (x), conseq] arg 
@@ -137,6 +140,7 @@ If DO-BETA, the function will do β-reduction at the same time.
         )
       )
 
+      ;; [tau annotated-functor] arg
       ( (structure app 
           :functor  (structure type-annotation 
                       :annotated an
@@ -144,6 +148,7 @@ If DO-BETA, the function will do β-reduction at the same time.
                     )
           :arg arg :level level :type ty
         )
+        ;; ~~> (tau (reduce (app annotated-functor arg)))
         (make-type-annotation
           :annotated 
             (reduce-term 
@@ -154,6 +159,56 @@ If DO-BETA, the function will do β-reduction at the same time.
               :assignments assignments
               :do-beta do-beta
             )
+          :level level
+          :type ty
+        )
+      )
+
+      ( otherwise 
+        ;; β-reduction is disallowed or impossible
+        ;; return
+        obj-pre-reduced
+      )
+    )
+  )
+)
+
+(defmethod reduce-term
+    ( (obj assign) &key (test #'eq) 
+                        (assignments nil)
+                        (do-beta nil)
+    )
+  (declare (type (function (t t) boolean) test)
+        (type list assignments)
+        (type boolean do-beta)
+  )
+  (let  ( (obj-pre-reduced 
+              (map-term #'reduce-term obj
+                  :test test
+                  :assignments assignments
+                  :do-beta do-beta
+              ) 
+          )
+        )
+  
+    (match obj-pre-reduced
+      ( (guard  (structure assign :openvari openvari
+                                  :val val
+                                  :whole whole 
+                                  :level level
+                                  :type ty
+                )
+                do-beta ;; only when β-reduction is ON
+        )
+        ;; do β-reduction
+        ;; [x ↦ arg] conseq
+        (make-type-annotation
+          :annotated  (reduce-term whole
+                        :test test
+                        :assignments
+                          (cons (cons (vari-data openvari) val) assignments)
+                        :do-beta do-beta
+                      )
           :level level
           :type ty
         )

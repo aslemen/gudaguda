@@ -76,6 +76,19 @@
       )
     )
 
+    ( (cons 'assign 
+        (cons (list openvari val) 
+              (cons whole (plist :level level :type ty))
+        )
+      )
+      `(make-assign
+        :openvari (read-term ,openvari)
+        :val      (read-term ,val)
+        :whole    (read-term ,whole)
+        :type     (if ,ty (read-term ,ty))
+        :level    (or ,level 0)
+      )
+    )
     ;; ------------
     ;; non-canonical notations
     ;; ------------
@@ -93,6 +106,18 @@
              (λ ,argvari-rest ,conseq)
           )
           ,@plists
+      )
+    )
+
+    ;; assignitution
+    ;; ( (openvar ↦ val) whole ...)
+    ( (cons (list openvar '↦ val)
+            (cons whole plists)
+      )
+      ;; normalize the form
+      ;; direct to (assign (openvar val) whole ...)
+      `(read-term
+        (assign (,openvar ,val) ,whole ,@plists)
       )
     )
 
@@ -340,6 +365,40 @@
             `(τ ,annotated-encoded
                 :type ,ty-encoded
                 :level ,level
+            )
+          )
+        )
+      )
+    )
+  )
+)
+(defmethod encode-term ((obj assign))
+  (let  ( (children-encoded (maplist-term #'encode-term obj))
+          (level (term-level obj))
+        )
+    (match children-encoded 
+      ( (list openvari-encoded val-encoded whole-encoded nil)
+        (cond  
+          ( (= 0 level) 
+            `(assign (,openvari-encoded ,val-encoded) ,whole-encoded)
+          )
+          ( t 
+            `(assign (,openvari-encoded ,val-encoded) ,whole-encoded
+                    :level ,level
+            )
+          )
+        )
+      )
+      ( (list openvari-encoded val-encoded whole-encoded ty-encoded)
+        (cond
+          ( (= 0 level)
+            `(assign (,openvari-encoded ,val-encoded) ,whole-encoded
+                    :type ,ty-encoded
+            )
+          )
+          ( t 
+            `(assign (,openvari-encoded ,val-encoded) ,whole-encoded
+                    :type ,ty-encoded :level ,level
             )
           )
         )
