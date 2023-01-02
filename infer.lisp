@@ -37,12 +37,16 @@
 )
 
 (declaim (ftype (function * null) elab-term-info))
-(defun elab-term-info (obj &key (test #'eq))
+(defgeneric elab-term-info (obj &key test)
+  (:documentation "Elaborate type constraints from bottom up.
+Destructively update the constraint-related slots of OBJ."
+  )
+)
+
+(defmethod elab-term-info ((obj vari) &key (test #'eq))
   (declare  (type term obj)
             (type (function (t t) boolean) test)
   )
-  ;; bottom-up elaboration
-  ;; modified in-situ
   (maplist-term #'elab-term-info obj :test test)
 
   ;; TODO: collect type infos of different occurrences of vari and const
@@ -71,7 +75,17 @@
       ;; remove caches
       (setf constrs-ty nil)
     )
+  )
+)
 
+
+(defmethod elab-term-info ((obj const) &key (test #'eq))
+  (declare  (type term obj)
+            (type (function (t t) boolean) test)
+  )
+  (maplist-term #'elab-term-info obj :test test)
+
+  (match obj
     ( (structure const :data at
         :type (structure term :constrs (place constrs-ty)
                               :assignments assignments-ty
@@ -95,7 +109,19 @@
       ;; remove caches
       (setf constrs-ty nil)
     )
+  )
 
+  ;; return
+  nil
+)
+
+(defmethod elab-term-info ((obj func) &key (test #'eq))
+  (declare  (type term obj)
+            (type (function (t t) boolean) test)
+  )
+  (maplist-term #'elab-term-info obj :test test)
+
+  (match obj
     ( (structure func
         :argvari (structure vari :data at
                                 :type type-argvari
@@ -181,7 +207,19 @@
       (setf constrs-conseq nil)
       (setf constrs-ty nil)
     )
+  )
 
+  ;; return
+  nil
+)
+
+(defmethod elab-term-info ((obj app) &key (test #'eq))
+  (declare  (type term obj)
+            (type (function (t t) boolean) test)
+  )
+  (maplist-term #'elab-term-info obj :test test)
+
+  (match obj
     ( (structure app
         :functor (structure term  :type type-functor
                                   :constrs (place constrs-functor)
@@ -255,7 +293,19 @@
       (setf constrs-arg nil)
       (setf constrs-ty nil)
     )
+  )
 
+  ;; return 
+  nil
+)
+
+(defmethod elab-term-info ((obj type-annotation) &key (test #'eq))
+  (declare  (type term obj)
+            (type (function (t t) boolean) test)
+  )
+  (maplist-term #'elab-term-info obj :test test)
+
+  (match obj
     ( (structure type-annotation
         :annotated  (structure term :type type-annotated
                                     :constrs (place constrs-annotated)
