@@ -17,7 +17,7 @@
     ;; constant
     ( (cons 'const (cons name (plist :type ty :level level)))
       `(make-const  :data   (quote ,name)
-                    :type   (read-term ,ty)
+                    :type   (if ,ty (read-term ,ty))
                     :level  (or ,level 0)
       )
     )
@@ -25,7 +25,7 @@
     ;; variable
     ( (cons 'ζ (cons name (plist :type ty :level level)))
       `(make-vari   :data   (quote ,name)
-                    :type   (read-term ,ty)
+                    :type   (if ,ty (read-term ,ty))
                     :level  (or ,level 0)
       )
     )
@@ -38,11 +38,11 @@
                      )
                )
       )
-        `(make-func :argvari  (read-term ,argvari)
-                    :conseq   (read-term ,conseq)
-                    :type     (read-term ,ty)
-                    :level    (or ,level 0)
-        )
+      `(make-func :argvari  (read-term ,argvari)
+                  :conseq   (read-term ,conseq)
+                  :type     (if ,ty (read-term ,ty))
+                  :level    (or ,level 0)
+      )
     )
 
     ;; (app f x)
@@ -53,10 +53,9 @@
                   )
             )
       )
-      
       `(make-app  :functor  (read-term ,functor) 
                   :arg      (read-term ,arg)
-                  :type     (read-term ,ty)
+                  :type     (if ,ty (read-term ,ty))
                   :level    (or ,level 0)
       )
     )
@@ -70,8 +69,8 @@
               )
           (make-type-annotation
             :annotated ,var-annot-read
-            :type (read-term ,ty)
-            :level (or ,level (term-level ,var-annot-read))
+            :type     (if ,ty (read-term ,ty))
+            :level    (or ,level (term-level ,var-annot-read))
           )
         )
       )
