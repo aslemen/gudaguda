@@ -59,7 +59,7 @@ Call this mapping function inside F for depth-first recursive application of F."
 
   (match obj
     ( (structure atomic :type ty)
-      (if ty (apply f ty succ-list kvargs))
+      (if ty (apply f ty succ-list kvargs) succ-list)
     )
   )
 )
@@ -75,7 +75,7 @@ Call this mapping function inside F for depth-first recursive application of F."
       )
       (apply f argvari 
         (apply f conseq 
-          (if ty (apply f ty succ-list kvargs))
+          (if ty (apply f ty succ-list kvargs) succ-list)
           kvargs
         )
         kvargs
@@ -93,7 +93,7 @@ Call this mapping function inside F for depth-first recursive application of F."
     ( (structure app :functor functor :arg arg :type ty)
       (apply f functor 
                 (apply f arg
-                        (if ty (apply f ty succ-list kvargs))
+                        (if ty (apply f ty succ-list kvargs) succ-list)
                         kvargs
                 )
                 kvargs
@@ -110,7 +110,7 @@ Call this mapping function inside F for depth-first recursive application of F."
   (match obj
     ( (structure type-annotation :annotated an :type ty)
       (apply f an 
-            (if ty (apply f ty succ-list kvargs))
+            (if ty (apply f ty succ-list kvargs) succ-list)
             kvargs
       )
     )
