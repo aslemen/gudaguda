@@ -100,7 +100,7 @@
     ;; (x :type ty :level level)
     ( (cons singleton (plist :type ty :level level))
       `(make-vari :data (quote ,singleton) 
-                  :type (read-term ,ty)
+                  :type (if ,ty (read-term ,ty))
                   :level (or ,level 0)
       )
     )
