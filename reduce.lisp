@@ -17,6 +17,31 @@ A new term object is returned and OBJ will not be tampered.
 ")
 )
 (defmethod reduce-term
+    ( (obj const) &key (test #'eq) 
+                       (assignments nil)
+                       (do-beta nil)
+    )
+  (declare (type (function (t t) boolean) test)
+           (type list assignments)
+           (type boolean do-beta)
+  )
+  (format *error-output* "CONST ~A ~&" obj assignments)
+  (match obj
+    ( (structure const :data at :level level :type ty
+                :assignments assignments
+      )
+      (make-const :data at :level level
+        :type (reduce-term ty 
+                :test test 
+                :assignments assignments
+                :do-beta do-beta
+              )
+        :assignments assignments
+      )
+    )
+  )
+)
+(defmethod reduce-term
     ( (obj vari) &key (test #'eq) 
                       (assignments nil)
                       (do-beta nil)
