@@ -114,7 +114,6 @@ which makes a term when evaluated."
 
     ;; (f x y z ...)
     ( (cons functor (cons _ _) )
-      (format t "app ~A ~%" s-expr)
       ;; normalize the form
       ;; direct to (app f x y z ...)
       `(parse-pseudo-expr (app ,functor ,@(cdr s-expr)))
@@ -123,7 +122,6 @@ which makes a term when evaluated."
     ;; a pair of superfluous parentheses
     ;; (x)
     ( (cons singleton nil)
-      (format t "sg ~A ~%" s-expr)
       ;; just unwrap the superfluous parentheses
       ;; direct to x
       `(parse-pseudo-expr ,singleton)

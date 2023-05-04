@@ -25,7 +25,6 @@ A new term object is returned and OBJ will not be tampered.
            (type list assignments)
            (type boolean do-beta)
   )
-  (format *error-output* "CONST ~A ~&" obj assignments)
   (match obj
     ( (structure const :data at :level level :type ty
                 :assignments assignments
