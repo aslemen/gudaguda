@@ -61,7 +61,6 @@ A new term object is returned and OBJ will not be tampered.
               )
         ;; if substitite for vari name AT is not found
         ( (or (cons _ nil) nil )
-
           ;; just do recursion
           (map-term  #'reduce-term obj 
                     :test test 
@@ -133,11 +132,7 @@ A new term object is returned and OBJ will not be tampered.
               ) 
           )
         )
-    (match  (map-term #'reduce-term obj
-                    :test test
-                    :assignments assignments
-                    :do-beta do-beta
-            )
+    (match obj-pre-reduced
       ( (guard  (structure app 
                   :functor  (structure func
                               :argvari (structure vari :data vari-name)
