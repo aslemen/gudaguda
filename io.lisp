@@ -179,30 +179,26 @@ List of commands:
 
 * (bind VARI OBJ): bind OBJ to VARI and save it to the assignment of CTX.
 
-* (infer OBJ): substitute assignments for variables.
+* (infer OBJ): do type inference for OBJ.
   The result is pushed to the queue of CTX.
 
 * (reduce OBJ): do B-reduction on OBJ and push the result to CTX.
 "
   (match comm
     ( (list 'bind vari obj)
-      `(push (cons (quote ,vari) (parse-pseudo-expr ,obj) )
+      `(push (cons (quote ,vari) ,(parse-pseudo-expr obj) )
              (context-assignments ,ctx)
       )
     )
     ( (list 'infer obj)
-      `(setf  (context-result ,ctx)
-              (qpush  (context-result ,ctx) 
-                      (reduce-term (parse-pseudo-expr ,obj)
-                        :assignments (context-assignments ,ctx)
-                        :do-beta nil
-                      )
+      `(qpush (context-result ,ctx) 
+              (infer-types ,(parse-pseudo-expr obj)
               )
       )
     )
     ( (list 'reduce obj) 
       `(qpush (context-result ,ctx)
-              (reduce-term (parse-pseudo-expr ,obj)
+              (reduce-term ,(parse-pseudo-expr obj)
                 :assignments (context-assignments ,ctx)
                 :do-beta t
               )
