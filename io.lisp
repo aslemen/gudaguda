@@ -10,8 +10,10 @@
 
 ;; TODO implement constant
 ;; TODO implement let ... in
-(defmacro read-term (s-expr)
-  "Read S-EXPR, a lambda term encoded in a pseudo S-expression."
+(defun parse-pseudo-expr (s-expr)
+"Read a lambda term encoded in a pseudo-S-expr
+and convert it to another S-expr 
+which makes a term when evaluated."
   (match s-expr
     ;; ------------
     ;; expression evaled by LISP
@@ -25,7 +27,7 @@
     ;; constant
     ( (cons 'const (cons name (plist :type ty :level level)))
       `(make-const  :data   (quote ,name)
-                    :type   (read-term ,ty)
+                    :type   ,(if ty (parse-pseudo-expr ty))
                     :level  (or ,level 0)
       )
     )
@@ -33,24 +35,24 @@
     ;; variable
     ( (cons 'ζ (cons name (plist :type ty :level level)))
       `(make-vari   :data   (quote ,name)
-                    :type   (read-term ,ty)
+                    :type   ,(if ty (parse-pseudo-expr ty))
                     :level  (or ,level 0)
       )
     )
 
     ;; func
-    ;; (λ (x) y)
+    ;; (λ (x) y :type ty :level level)
     ( (cons 'λ (cons (cons argvari nil)
                      (cons conseq
                            (plist :type ty :level level)
                      )
                )
       )
-        `(make-func :argvari  (read-term ,argvari)
-                    :conseq   (read-term ,conseq)
-                    :type     (read-term ,ty)
-                    :level    (or ,level 0)
-        )
+      `(make-func :argvari  ,(parse-pseudo-expr argvari)
+                  :conseq   ,(parse-pseudo-expr conseq)
+                  :type     ,(if ty (parse-pseudo-expr ty))
+                  :level    (or ,level 0)
+      )
     )
 
     ;; (app f x)
@@ -61,10 +63,9 @@
                   )
             )
       )
-      
-      `(make-app  :functor  (read-term ,functor) 
-                  :arg      (read-term ,arg)
-                  :type     (read-term ,ty)
+      `(make-app  :functor  ,(parse-pseudo-expr functor) 
+                  :arg      ,(parse-pseudo-expr arg)
+                  :type     ,(if ty (parse-pseudo-expr ty))
                   :level    (or ,level 0)
       )
     )
@@ -72,15 +73,12 @@
     ;; type annotation
     ;; (τ a :type ty :level level)
     ( (cons 'τ (cons annotated (plist :type ty :level level)))
-      (let  ( (var-annot-read (gensym "ANNOT-READ"))
+      (let* ( (var-annot-read (parse-pseudo-expr annotated))
             )
-        `(let ( (,var-annot-read (read-term ,annotated) )
-              )
-          (make-type-annotation
-            :annotated ,var-annot-read
-            :type (read-term ,ty)
-            :level (or ,level (term-level ,var-annot-read))
-          )
+        `(make-type-annotation
+          :annotated ,var-annot-read
+          :type      ,(if ty (parse-pseudo-expr ty))
+          :level     (or ,level (term-level ,var-annot-read))
         )
       )
     )
@@ -97,7 +95,7 @@
       )
       ;; normalize the form
       ;; direct to (λ (x) (λ (y z ...) ...) )
-      `(read-term 
+      `(parse-pseudo-expr 
           (λ (,argvar1) 
              (λ ,argvari-rest ,conseq)
           )
@@ -109,7 +107,7 @@
     ;; (x :type ty :level level)
     ( (cons singleton (plist :type ty :level level))
       `(make-vari :data (quote ,singleton) 
-                  :type (read-term ,ty)
+                  :type ,(if ty (parse-pseudo-expr ty))
                   :level (or ,level 0)
       )
     )
@@ -119,7 +117,7 @@
       (format t "app ~A ~%" s-expr)
       ;; normalize the form
       ;; direct to (app f x y z ...)
-      `(read-term (app ,functor ,@(cdr s-expr)))
+      `(parse-pseudo-expr (app ,functor ,@(cdr s-expr)))
     )
 
     ;; a pair of superfluous parentheses
@@ -128,13 +126,17 @@
       (format t "sg ~A ~%" s-expr)
       ;; just unwrap the superfluous parentheses
       ;; direct to x
-      `(read-term ,singleton)
+      `(parse-pseudo-expr ,singleton)
     )
 
     ( otherwise
       `(make-vari :data (quote ,s-expr))
     )
   )
+)
+
+(defmacro read-pseudo-expr (&body s-expr)
+  (parse-pseudo-expr s-exp)
 )
 
 (defstruct (context)
@@ -184,14 +186,14 @@ List of commands:
 "
   (match comm
     ( (list 'bind vari obj)
-      `(push (cons (quote ,vari) (read-term ,obj) )
+      `(push (cons (quote ,vari) (parse-pseudo-expr ,obj) )
              (context-assignments ,ctx)
       )
     )
     ( (list 'infer obj)
       `(setf  (context-result ,ctx)
               (qpush  (context-result ,ctx) 
-                      (reduce-term (read-term ,obj)
+                      (reduce-term (parse-pseudo-expr ,obj)
                         :assignments (context-assignments ,ctx)
                         :do-beta nil
                       )
@@ -200,7 +202,7 @@ List of commands:
     )
     ( (list 'reduce obj) 
       `(qpush (context-result ,ctx)
-              (reduce-term (read-term ,obj)
+              (reduce-term (parse-pseudo-expr ,obj)
                 :assignments (context-assignments ,ctx)
                 :do-beta t
               )
@@ -229,7 +231,7 @@ CTX is a context.
 (declaim (ftype (function (term) list) encode-term))
 (defgeneric encode-term (obj) 
   (:documentation
-"Generate the LISP representation of term OBJ."
+"Generate the pseudo S-expr representation of term OBJ."
   )
 )
 
