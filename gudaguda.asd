@@ -16,25 +16,30 @@
     (:file "infer")
     (:file "io")
   )
-  ;; :in-order-to (
-    ;; (test-op (test-op gudaguda/test))
-  ;; )
+  :in-order-to (
+    (test-op (test-op gudaguda/test))
+  )
 )
 
-;; (defsystem "gudaguda/test"
-;;   :depends-on ("gudaguda" "fiveam")
-;;   :serial t
-;;   :components (
-;;     (:module "test"
-;;         :components (
-;;             (:file "main")
-;;             ;; component tests
-;;             ;; intergration tests
-;;         )
-;;     )
-;;   )
-;;   :perform (
-;;     test-op (o s)
-;;       (symbol-call :fiveam :run! :gudaguda)
-;;   )
-;; )
+(defsystem "gudaguda/test"
+  :depends-on (
+    :iterate
+    :fiveam
+    :gudaguda
+  )
+  :serial t
+  :components (
+    (:module "test"
+        :components (
+            (:file "main")
+            ;; component tests
+            (:file "io")
+            ;; intergration tests
+        )
+    )
+  )
+  :perform (
+    test-op (o s)
+      (symbol-call :fiveam :run! :gudaguda)
+  )
+)
