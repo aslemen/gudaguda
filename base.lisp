@@ -13,7 +13,8 @@
     ;; conditions
     #:io-error #:parsing-error #:parsing-command-error
     ;; lambda expression keywords
-    #:λ #:app #:τ #:lisp #:const
+    #:λ #:app #:τ #:↦
+    #:lisp #:assign #:const
     #:bind #:infer #:reduce
     ;; readers
     #:parse-pseudo-expr

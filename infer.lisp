@@ -2,6 +2,7 @@
 
 (declaim (ftype (function (term) term) erase-types) )
 (defun erase-types (obj)
+  "Erase all type annotations of OBJ. Returns a copy."
   (match obj 
     ( (structure type-annotation :annotated an)
       (erase-types an)
@@ -20,6 +21,7 @@
 
 (declaim (ftype (function (term) term) fill-unspecified-types))
 (defun fill-unspecified-types (obj)
+  "Put one type variable on every null type slot in OBJ. Returns a copy."
   (let  ( (obj-copied (map-term #'fill-unspecified-types obj))
         )
     (match obj-copied
@@ -35,12 +37,16 @@
 )
 
 (declaim (ftype (function * null) elab-term-info))
-(defun elab-term-info (obj &key (test #'eq))
+(defgeneric elab-term-info (obj &key test)
+  (:documentation "Elaborate type constraints from bottom up.
+Destructively update the constraint-related slots of OBJ."
+  )
+)
+
+(defmethod elab-term-info ((obj vari) &key (test #'eq))
   (declare  (type term obj)
             (type (function (t t) boolean) test)
   )
-  ;; bottom-up elaboration
-  ;; modified in-situ
   (maplist-term #'elab-term-info obj :test test)
 
   ;; TODO: collect type infos of different occurrences of vari and const
@@ -69,7 +75,17 @@
       ;; remove caches
       (setf constrs-ty nil)
     )
+  )
+)
 
+
+(defmethod elab-term-info ((obj const) &key (test #'eq))
+  (declare  (type term obj)
+            (type (function (t t) boolean) test)
+  )
+  (maplist-term #'elab-term-info obj :test test)
+
+  (match obj
     ( (structure const :data at
         :type (structure term :constrs (place constrs-ty)
                               :assignments assignments-ty
@@ -93,7 +109,19 @@
       ;; remove caches
       (setf constrs-ty nil)
     )
+  )
 
+  ;; return
+  nil
+)
+
+(defmethod elab-term-info ((obj func) &key (test #'eq))
+  (declare  (type term obj)
+            (type (function (t t) boolean) test)
+  )
+  (maplist-term #'elab-term-info obj :test test)
+
+  (match obj
     ( (structure func
         :argvari (structure vari :data at
                                 :type type-argvari
@@ -179,7 +207,19 @@
       (setf constrs-conseq nil)
       (setf constrs-ty nil)
     )
+  )
 
+  ;; return
+  nil
+)
+
+(defmethod elab-term-info ((obj app) &key (test #'eq))
+  (declare  (type term obj)
+            (type (function (t t) boolean) test)
+  )
+  (maplist-term #'elab-term-info obj :test test)
+
+  (match obj
     ( (structure app
         :functor (structure term  :type type-functor
                                   :constrs (place constrs-functor)
@@ -253,7 +293,19 @@
       (setf constrs-arg nil)
       (setf constrs-ty nil)
     )
+  )
 
+  ;; return 
+  nil
+)
+
+(defmethod elab-term-info ((obj type-annotation) &key (test #'eq))
+  (declare  (type term obj)
+            (type (function (t t) boolean) test)
+  )
+  (maplist-term #'elab-term-info obj :test test)
+
+  (match obj
     ( (structure type-annotation
         :annotated  (structure term :type type-annotated
                                     :constrs (place constrs-annotated)
@@ -306,14 +358,99 @@
   nil
 )
 
+(defmethod elab-term-info ((obj assign) &key (test #'eq))
+  (declare  (type term obj)
+            (type (function (t t) boolean) test)
+  )
+  (maplist-term #'elab-term-info obj :test test)
+
+  (match obj
+    ( (structure assign
+        :openvari (structure vari :data vari-openvari
+                                  :type type-openvari
+                                  :constrs (place constrs-openvari)
+                                  :assignments assignments-openvari
+                                  :free-vars free-vars-openvari
+                  )
+        :val      (structure term :type type-val
+                                  :constrs (place constrs-val)
+                                  :assignments assignments-val
+                                  :free-vars free-vars-val
+                  )
+        :whole    (structure term :type type-whole
+                                  :constrs (place constrs-whole)
+                                  :assignments (place assignments-whole)
+                                  :free-vars free-vars-whole
+                  )
+        :level    level
+        :type     (structure term :constrs (place constrs-ty)
+                                  :assignments assignments-ty
+                                  :free-vars free-vars-ty
+                  )
+        :constrs      (place constrs)
+        :assignments  (place assignments)
+        :free-vars    (place free-vars)
+      )
+
+      ;; merge freevars and constraints
+      (setf free-vars
+            (append free-vars
+                    free-vars-openvari
+                    free-vars-val
+                    free-vars-whole
+                    free-vars-ty
+            )
+      )
+      ;; erase openvari as free variable
+      (push (cons (vari-data openvari) nil) free-vars)
+
+      (setf constrs
+        (cons 
+          ;; (type of openvari) ≡ type of val
+          (cons type-openvari type-val)
+          (append constrs 
+                  constrs-openvari
+                  constrs-val
+                  constrs-whole
+                  constrs-ty
+          )
+        )
+      )
+
+      (setf assignments 
+            (append assignments
+                    assignments-openvari
+                    assignments-val
+                    assignments-whole
+                    assignments-ty
+            )
+      )
+      ;; add assignments to WHOLE
+      ;; (push (cons vari-openvari (assign-val obj)) assignments-whole)
+
+      ;; delete children's cahces
+      (setf constrs-openvari nil)
+      (setf constrs-val nil)
+      (setf constrs-whole nil)
+      (setf constrs-ty nil)
+    )
+  )
+
+  ;; return
+  nil
+)
+
 (declaim (ftype (function * null) unify-constrs))
 (defun unify-constrs (obj &key (test #'eq) (temp-constrs nil))
+"Unify constraints in OBJ from bottom up.
+Constraint slots are destructively modified.
+
+Errors are sent if the unification fails."
   (declare  (type term obj)
             (type (function (t t) boolean) test)
             (type list temp-constrs)
   )
-  ;; bottom-up unification
-  ;; modified in-situ
+
   (maplist-term #'unify-constrs obj :test test)
 
   (match obj
@@ -528,11 +665,13 @@
 
 (declaim (ftype (function * null) update-assignments))
 (defun update-assignments (obj &key (parent-assignments nil))
+"Destructively update local assignments of OBJ from top down."
   (declare  (type term obj)
             (type list parent-assignments)
   )
 
-  (setf (term-assignments obj) 
+  ;; overwrite parent assignments with local assignments 
+  (setf (term-assignments obj)
         (append (term-assignments obj) parent-assignments)
   )
   (maplist-term #'update-assignments obj 
@@ -542,8 +681,16 @@
 
 (declaim (ftype (function * null) infer-types))
 (defun infer-types (obj &key (test #'eq))
-"Infer types of the components of term OBJ.
-TEST specifies the way of equality tests."
+"Infer types of the nodes of term OBJ.
+Constraints and local assignments are destructively modified.
+
+TEST specifies the way of equality tests.
+
+Commands:
+* ELAB-TERM-INFO
+* UNIFY-CONSTRS
+* UPDATE-ASSIGNMENTS
+"
   (declare  (type term obj)
             (type (function (t t) boolean) test)
   )

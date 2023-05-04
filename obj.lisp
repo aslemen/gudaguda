@@ -70,6 +70,12 @@ The type annotation goes to TYPE.
   (annotated nil :type term)
 )
 
+(defstruct (assign (:include term))
+  (openvari nil   :type vari)
+  (val      nil   :type term)
+  (whole    nil   :type term)
+)
+
 ;; ============
 ;; Superficial equivalence
 ;; ============
@@ -115,10 +121,15 @@ The type annotation goes to TYPE.
 
 (declaim (ftype (function * list) mapappend-term))
 (defgeneric mapappend-term (f obj succ-list &rest kvargs)
-  (:documentation "Apply function F to each nodes of term OBJ one by one in a nesting way and append the results to SUCC-LIST.
+  (:documentation 
+"Apply function F to each nodes of term OBJ one by one in a nesting way and append the results marshalled in a single flat list to SUCC-LIST.
 
 F is a function which takes as arguments TERM 
 and keyword arguments KVARGS and returns things of any types.
+
+This mapping fucntion is compared to 'join . fmap' in Haskell.
+Calling this mapping function inside F 
+will result in a depth-first recursive application of F.
 
 OBJ specifies a TERM.
 OBJ may be tampered as side-effects of F.
@@ -137,7 +148,7 @@ Example:
 
   (match obj
     ( (structure atomic :type ty)
-      (if ty (apply f ty succ-list kvargs))
+      (if ty (apply f ty succ-list kvargs) succ-list)
     )
   )
 )
@@ -153,7 +164,7 @@ Example:
       )
       (apply f argvari 
         (apply f conseq 
-          (if ty (apply f ty succ-list kvargs))
+          (if ty (apply f ty succ-list kvargs) succ-list)
           kvargs
         )
         kvargs
@@ -171,7 +182,7 @@ Example:
     ( (structure app :functor functor :arg arg :type ty)
       (apply f functor 
                 (apply f arg
-                        (if ty (apply f ty succ-list kvargs))
+                        (if ty (apply f ty succ-list kvargs) succ-list)
                         kvargs
                 )
                 kvargs
@@ -188,7 +199,28 @@ Example:
   (match obj
     ( (structure type-annotation :annotated an :type ty)
       (apply f an 
-            (if ty (apply f ty succ-list kvargs))
+            (if ty (apply f ty succ-list kvargs) succ-list)
+            kvargs
+      )
+    )
+  )
+)
+(defmethod mappend-term (f (obj assign) succ-list &rest kvargs)
+  (declare 
+    (type (function (term list &key) term) f)
+    (type list succ-list)
+  )
+
+  (match obj
+    ( (structure assign :openvari openvari :val val :whole whole :type ty)
+      (apply f openvari
+            (apply f val 
+                  (apply f whole
+                      (if ty (apply f ty succ-list kvargs) succ-list)
+                      kvargs
+                  )
+                  kvargs 
+            )
             kvargs
       )
     )
@@ -200,10 +232,16 @@ Example:
   (:documentation "Apply function F to each nodes of term OBJ in a parallel way and append the results to SUCC-LIST.
 
 F is a function which takes as arguments TERM 
-and keyword arguments KVARGS and returns things of any types.
+and keyword arguments KVARGS and collects the returned values as a list.
+
+This mapping fucntion is compared to 'fmap' in Haskell where OBJ is seen as a list.
+
+Calling this mapping function inside F will result in 
+a depth-first recursive application of F.
 
 OBJ specifies a TERM.
 OBJ may be tampered as side-effects of F.
+If (type-term OBJ) is NIL, then the NIL appears in (the type posiiton of) the list.
 
 KVARGS specifices keyword arguments of F.
 
@@ -267,11 +305,30 @@ Example:
     )
   )
 )
+(defmethod maplist-term (f (obj assign) &rest kvargs)
+  (declare 
+    (type (function (term list &key) term) f)
+    (type list succ-list)
+  )
+
+  (match obj
+    ( (structure assign :openvari openvari :val val :whole whole :type ty)
+      (list (apply f openvari kvargs)
+            (apply f val kvargs)
+            (apply f whole kvargs)
+            (if ty (apply f ty kvargs))
+      )
+    )
+  )
+)
 
 (declaim (ftype (function * term) map-term))
 (defgeneric map-term (f obj &rest kvargs)
-  (:documentation 
+  (:documentation
 "Apply function F to each nodes of term OBJ to create a new term of the same type.
+
+Call this mapping function inside F will result in 
+  a depth-first recursive application of F to TERM.
 
 F is a function which takes as arguments TERM 
 and keyword arguments KVARGS
@@ -358,7 +415,7 @@ KVARGS specifices keyword arguments of F.
 
   (match obj
     ( (structure type-annotation :annotated an :level level :type ty
-      :constrs        constrs
+        :constrs      constrs
         :assignments  assignments
         :free-vars    free-vars
       )
@@ -370,6 +427,34 @@ KVARGS specifices keyword arguments of F.
         :constrs      constrs
         :assignments  assignments
         :free-vars    free-vars
+      )
+    )
+  )
+)
+(defmethod map-term (f (obj assign) &rest kvargs)
+  (declare 
+    (type (function (term list &key) term) f)
+    (type list succ-list)
+  )
+
+  (match obj
+    ( (structure assign
+        :openvari openvari :val val :whole whole 
+        :level level
+        :type ty
+        :constrs      constrs
+        :assignments  assignments
+        :free-vars    free-vars
+      )
+      (make-assign
+        :openvari (apply f openvari kvargs)
+        :val (apply f val kvargs)
+        :whole (apply f whole kvargs)
+        :level level
+        :type (if ty (apply f ty kvargs))
+        :constrs constrs
+        :assignments assignments
+        :free-vars free-vars
       )
     )
   )

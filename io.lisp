@@ -83,6 +83,19 @@ which makes a term when evaluated."
       )
     )
 
+    ( (cons 'assign 
+        (cons (list openvari val) 
+              (cons whole (plist :level level :type ty))
+        )
+      )
+      `(make-assign
+        :openvari (read-term ,openvari)
+        :val      (read-term ,val)
+        :whole    (read-term ,whole)
+        :type     (if ,ty (read-term ,ty))
+        :level    (or ,level 0)
+      )
+    )
     ;; ------------
     ;; non-canonical notations
     ;; ------------
@@ -103,23 +116,44 @@ which makes a term when evaluated."
       )
     )
 
+    ;; assignitution
+    ;; ( (openvar ↦ val) whole ...)
+    ( (cons (list openvar '↦ val)
+            (cons whole plists)
+      )
+      ;; normalize the form
+      ;; direct to (assign (openvar val) whole ...)
+      `(read-term
+        (assign (,openvar ,val) ,whole ,@plists)
+      )
+    )
+
     ;; variable with type annotation
     ;; (x :type ty :level level)
-    ( (cons singleton (plist :type ty :level level))
+    ( (guard (cons singleton (plist :type ty :level level))
+             (not (and (null ty) (null level)))
+      )
       `(make-vari :data (quote ,singleton) 
                   :type ,(if ty (parse-pseudo-expr ty))
                   :level (or ,level 0)
       )
     )
-
+    ;; Lisp-style function application
     ;; (f x y z ...)
     ( (cons functor (cons _ _) )
       ;; normalize the form
-      ;; direct to (app f x y z ...)
-      `(parse-pseudo-expr (app ,functor ,@(cdr s-expr)))
+      ;; direct to ((app (app (app f x) y) z) ...)
+      (iter 
+        (with f = functor)
+        (for arg in (cdr s-expr))
+
+        (setq f `(app ,f ,arg))
+
+        (finally (return (parse-pseudo-expr f)) )
+      )
     )
 
-    ;; a pair of superfluous parentheses
+    ;; superfluous parentheses
     ;; (x)
     ( (cons singleton nil)
       ;; just unwrap the superfluous parentheses
@@ -246,10 +280,10 @@ CTX is a context.
       ( (list ty-encoded) 
         (cond 
           ( (= 0 level) 
-            `(,data :type ,(encode-term ty) )
+            `(,data :type ,ty-encoded )
           )
           ( t 
-            `(,data :type ,(encode-term ty) :level ,level)
+            `(,data :type ,ty-encoded :level ,level)
           )
         )
       )
@@ -276,10 +310,10 @@ CTX is a context.
       ( (list ty-encoded) 
         (cond 
           ( (= 0 level) 
-            `(const ,data :type ,(encode-term ty) )
+            `(const ,data :type ,ty-encoded )
           )
           ( t 
-            `(const ,data :type ,(encode-term ty) :level ,level)
+            `(const ,data :type ,ty-encoded :level ,level)
           )
         )
       )
@@ -379,6 +413,40 @@ CTX is a context.
             `(τ ,annotated-encoded
                 :type ,ty-encoded
                 :level ,level
+            )
+          )
+        )
+      )
+    )
+  )
+)
+(defmethod encode-term ((obj assign))
+  (let  ( (children-encoded (maplist-term #'encode-term obj))
+          (level (term-level obj))
+        )
+    (match children-encoded 
+      ( (list openvari-encoded val-encoded whole-encoded nil)
+        (cond  
+          ( (= 0 level) 
+            `(assign (,openvari-encoded ,val-encoded) ,whole-encoded)
+          )
+          ( t 
+            `(assign (,openvari-encoded ,val-encoded) ,whole-encoded
+                    :level ,level
+            )
+          )
+        )
+      )
+      ( (list openvari-encoded val-encoded whole-encoded ty-encoded)
+        (cond
+          ( (= 0 level)
+            `(assign (,openvari-encoded ,val-encoded) ,whole-encoded
+                    :type ,ty-encoded
+            )
+          )
+          ( t 
+            `(assign (,openvari-encoded ,val-encoded) ,whole-encoded
+                    :type ,ty-encoded :level ,level
             )
           )
         )
