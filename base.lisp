@@ -4,6 +4,10 @@
   (:export
     #:base-error
     ;; ------
+    ;; obj.lisp
+    ;; ------
+    #:equiv-terms
+    ;; ------
     ;; io.lisp
     ;; ------
     ;; conditions
@@ -12,7 +16,8 @@
     #:λ #:app #:τ #:lisp #:const
     #:bind #:infer #:reduce
     ;; readers
-    #:read-term
+    #:parse-pseudo-expr
+    #:read-pseudo-expr
     #:read-command
     #:read-script
     ;; context
