@@ -6,6 +6,8 @@
     ;; ------
     ;; io.lisp
     ;; ------
+    ;; conditions
+    #:io-error #:parsing-error #:parsing-command-error
     ;; lambda expression keywords
     #:λ #:app #:τ #:lisp #:const
     #:bind #:infer #:reduce

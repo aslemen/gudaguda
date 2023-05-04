@@ -1,5 +1,13 @@
 (in-package :gudaguda)
 
+(define-condition io-error (base-error)
+  ()
+)
+
+(define-condition parsing-error (io-error)
+  ()
+)
+
 ;; TODO implement constant
 ;; TODO implement let ... in
 (defmacro read-term (s-expr)
@@ -143,6 +151,16 @@
   )
 )
 
+(define-condition parsing-command-error (parse-error)
+  ( (input :type string)
+  )
+  (:report 
+    (lambda (c stream)
+      (format stream "Invalid command syntax: ~a~&" (input c))
+    )
+  )
+  (:documentation "Error occurring when parsing a command.")
+)
 (defmacro read-command ((ctx) &body comm)
   (match comm
     ( (list 'bind vari obj)
@@ -171,7 +189,7 @@
       )
     )
     ( otherwise
-      (error "INCORRECT SYNTAX")
+      (error (make-condition 'parsing-command-error :input comm))
     )
   )
 )
