@@ -71,6 +71,45 @@ The type annotation goes to TYPE.
 )
 
 ;; ============
+;; Superficial equivalence
+;; ============
+(defgeneric equiv-terms (left right)
+  (:documentation "Check the superficial equivalence of terms LEFT and RIGHT.")
+)
+
+
+(defmethod equiv-terms ((a atomic) (b atomic))
+  (and (equal (atomic-data a) (atomic-data b))
+       (eq (term-level a) (term-level b))
+       (equiv-terms (term-type a) (term-type b))
+  )
+)
+(defmethod equiv-terms ((a func) (b func))
+  (and (equiv-terms (func-argvari a) (func-argvari b))
+       (equiv-terms (func-conseq a) (func-conseq b))
+       (eq (term-level a) (term-level b))
+       (equiv-terms (term-type a) (term-type b))
+  )
+)
+(defmethod equiv-terms ((a app) (b app))
+  (and (equiv-terms (app-functor a) (app-functor b))
+       (equiv-terms (app-arg a) (app-arg b))
+       (eq (term-level a) (term-level b))
+       (equiv-terms (term-type a) (term-type b))
+  )
+)
+(defmethod equiv-terms ((a type-annotation) (b type-annotation))
+  (and (equiv-terms (type-annotation-annotated a) 
+               (type-annotation-annotated b))
+       (eq (term-level a) (term-level b))
+       (equiv-terms (term-type a) (term-type b))
+  )
+)
+(defmethod equiv-terms ((a t) (b t))
+  (equal a b)
+)
+
+;; ============
 ;; Mapping functions
 ;; ============
 
