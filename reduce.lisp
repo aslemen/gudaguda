@@ -12,6 +12,8 @@ whose keys are bare name of variables unwrapped from structure VAR,
 and whose values are an arbitrary data of structure TERM.
 
 If DO-BETA, the function will do β-reduction at the same time.
+
+A new term object is returned and OBJ will not be tampered.
 ")
 )
 (defmethod reduce-term
@@ -197,6 +199,7 @@ If DO-BETA, the function will do β-reduction at the same time.
 
 (declaim (ftype (function (term) term) remove-type-annotations))
 (defun remove-type-annotations (obj)
+"Remove all type annotations of OBJ."
   (match obj
     ( (structure type-annotation :annotated an)
       (remove-type-annotations an)

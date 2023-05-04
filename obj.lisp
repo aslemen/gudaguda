@@ -5,6 +5,18 @@
 ;; ============
 
 (defstruct term
+"The base structure for terms.
+
+LEVEL is the hierarchical level that this term belongs to.
+Ordinary terms (numbers, individuals, etc.) are in level 0.
+Types of them are in level 1.
+Types of types of them are in level 2.
+
+TYPE is the type annotation for this term, which is optional.
+
+CONSTRS, CONSTRS-LOCAL, ASSIGNMENTS, FREE-VARS are
+for internal caching used in type checking and β-reduction.
+"
   (level            0   :type (integer 0))
   (type             nil :type (or null term))
   (constrs          nil :type list)
@@ -14,24 +26,47 @@
 )
 
 (defstruct (atomic        (:include term))
+"The base structure for atomic terms."
   (data nil :type t)
 )
 
-(defstruct (const         (:include atomic)))
-(defstruct (vari          (:include atomic)))
-(defstruct (vari-typevari (:include vari)))
+(defstruct (const         (:include atomic))
+"The structure for constants."
+)
+(defstruct (vari          (:include atomic))
+"The structure for variables."
+)
+(defstruct (vari-typevari (:include vari))
+"The structure for type variables."
+)
 
 (defstruct (func (:include term))
+"The structure for lambda functions.
+
+ARGVARI is a variable to be abstracted.
+CONSEQ is the body of the lambda.
+
+Schematically, λ ARGVARI, CONSEQ.
+"
   (argvari nil :type vari)
   (conseq  nil :type term)
 )
 
 (defstruct (app (:include term))
+"The structure for functional applications.
+
+Schematically, (FUNCTOR ARG).
+"
   (functor nil :type term)
   (arg     nil :type term)
 )
 
 (defstruct (type-annotation (:include term))
+"The structure for type annotations.
+
+ANNOTATED is the annotated term.
+The type annotation goes to TYPE.
+"
   (annotated nil :type term)
 )
 
@@ -41,7 +76,19 @@
 
 (declaim (ftype (function * list) mapappend-term))
 (defgeneric mapappend-term (f obj succ-list &rest kvargs)
-  (:documentation "TBW")
+  (:documentation "Apply function F to each nodes of term OBJ one by one in a nesting way and append the results to SUCC-LIST.
+
+F is a function which takes as arguments TERM 
+and keyword arguments KVARGS and returns things of any types.
+
+OBJ specifies a TERM.
+OBJ may be tampered as side-effects of F.
+
+KVARGS specifices keyword arguments of F.
+
+Example: 
+* (mappend-term F (func :argvari x :conseq a '(1 2 3))
+(F x (F a '(1 2 3)) )")
 )
 (defmethod mapappend-term (f (obj atomic) succ-list &rest kvargs)
   (declare 
@@ -111,7 +158,19 @@
 
 (declaim (ftype (function * list) maplist-term))
 (defgeneric maplist-term (f obj &rest kvargs)
-  (:documentation "TBW")
+  (:documentation "Apply function F to each nodes of term OBJ in a parallel way and append the results to SUCC-LIST.
+
+F is a function which takes as arguments TERM 
+and keyword arguments KVARGS and returns things of any types.
+
+OBJ specifies a TERM.
+OBJ may be tampered as side-effects of F.
+
+KVARGS specifices keyword arguments of F.
+
+Example: 
+* (mappend-term F (func :argvari x :conseq a '(1 2 3))
+(list (F x) (F a) '(1 2 3) )")
 )
 (defmethod maplist-term (f (obj atomic) &rest kvargs)
   (declare 
@@ -173,11 +232,15 @@
 (declaim (ftype (function * term) map-term))
 (defgeneric map-term (f obj &rest kvargs)
   (:documentation 
-"A recursion helper to apply a function to a term recursively.
-Structures will kept untouched and be copied.
+"Apply function F to each nodes of term OBJ to create a new term of the same type.
 
-F is a function from TERM (and keyword arguments) to TERM.
+F is a function which takes as arguments TERM 
+and keyword arguments KVARGS
+and returns a new term of the same type.
+
 OBJ specifies a TERM.
+OBJ will be copied during the process and therefore be kept untouched.
+
 KVARGS specifices keyword arguments of F.
 ")
 )
@@ -277,6 +340,7 @@ KVARGS specifices keyword arguments of F.
 
 (declaim (ftype (function (term) term) copyterm))
 (defun copyterm (obj)
+"Recursively copy term TERM."
   (declare  (type term obj))
 
   ;; map-term always make a copy of TERM.
@@ -286,6 +350,7 @@ KVARGS specifices keyword arguments of F.
 
 (declaim (ftype (function (term) null) clear-terminfo))
 (defun clear-terminfo (obj)
+"Clear type-checking caches of TERM."
   (maplist-term #'clear-terminfo obj)
   (setf (term-constrs obj) nil)
   (setf (term-assignments obj) nil)

@@ -542,10 +542,15 @@
 
 (declaim (ftype (function * null) infer-types))
 (defun infer-types (obj &key (test #'eq))
+"Infer types of the components of term OBJ.
+TEST specifies the way of equality tests."
   (declare  (type term obj)
             (type (function (t t) boolean) test)
   )
+  ;; first we elaborate term info
   (elab-term-info  obj :test test)
+  ;; then unify constraints
   (unify-constrs    obj :test test)
+  ;; and update assignments
   (update-assignments obj)
 )

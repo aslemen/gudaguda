@@ -138,11 +138,17 @@
 )
 
 (defstruct (context)
+"Represents a evaluation context.
+
+ASSIGNMENTS is an a-list of variable assignments.
+RESULT is a queue that contains inference results.
+"
   (assignments    nil :type list)
   (result         nil :type queues:simple-queue)
 )
 
 (defun init-context (&key (assignments nil) (result nil))
+"Create a new context for a script."
   (make-context :assignments assignments
                 :result (if (null result)
                             (make-queue :simple-queue)
@@ -161,7 +167,21 @@
   )
   (:documentation "Error occurring when parsing a command.")
 )
+
 (defmacro read-command ((ctx) &body comm)
+"Parse the LISP expression of a command and run it.
+
+CTX provides the evaluating context.
+
+List of commands:
+
+* (bind VARI OBJ): bind OBJ to VARI and save it to the assignment of CTX.
+
+* (infer OBJ): substitute assignments for variables.
+  The result is pushed to the queue of CTX.
+
+* (reduce OBJ): do B-reduction on OBJ and push the result to CTX.
+"
   (match comm
     ( (list 'bind vari obj)
       `(push (cons (quote ,vari) (read-term ,obj) )
@@ -179,13 +199,11 @@
       )
     )
     ( (list 'reduce obj) 
-      `(setf  (context-result ,ctx)
-              (qpush  (context-result ,ctx)
-                      (reduce-term (read-term ,obj)
-                        :assignments (context-assignments ,ctx)
-                        :do-beta t
-                      )
-            )
+      `(qpush (context-result ,ctx)
+              (reduce-term (read-term ,obj)
+                :assignments (context-assignments ,ctx)
+                :do-beta t
+              )
       )
     )
     ( otherwise
@@ -195,6 +213,11 @@
 )
 
 (defmacro read-script ( (ctx) &body body)
+"
+Parse a script and run it.
+
+CTX is a context.
+"
   `(progn ,@(mapcar #'(lambda (line)
                         `(read-command (,ctx) ,@line)
                       )
@@ -204,7 +227,11 @@
 )
 
 (declaim (ftype (function (term) list) encode-term))
-(defgeneric encode-term (obj) )
+(defgeneric encode-term (obj) 
+  (:documentation
+"Generate the LISP representation of term OBJ."
+  )
+)
 
 (defmethod encode-term ( (obj vari) )
   (let  ( (children-encoded (maplist-term #'encode-term obj))
